@@ -16,30 +16,32 @@ jobs:
         with:
           python-version: '3.11'
       
-      - name: Install system dependencies
+      - name: Install system dependencies & Buildozer
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential git python3 python3-dev zip unzip libtool libtool-bin autoconf automake m4 pkg-config libffi-dev libssl-dev openjdk-17-jdk
-          pip install --upgrade "pip<24.1"
+          pip install --upgrade pip
           pip install buildozer cython==0.29.33
       
-      - name: Setup Custom Toolchain & Deep Patch
+      - name: Surgical Patch (Bypass Savannah Server)
         run: |
-          # 1. Pengambilalihan mesin perakit (python-for-android) ke folder lokal
-          git clone https://github.com/kivy/python-for-android.git
+          # 1. Melacak direktori instalasi asli python-for-android di dalam mesin
+          P4A_DIR=$(python3 -c "import pythonforandroid; print(pythonforandroid.__path__[0])")
+          echo "Menemukan jantung kerangka perakit di: $P4A_DIR"
           
-          # 2. Patch Infrastruktur 1: Bypass Server Savannah yang mati ke Server Kanada
-          find python-for-android -type f -name "*.py" -exec sed -i 's/download.savannah.gnu.org\/releases/mirror.csclub.uwaterloo.ca\/nongnu/g' {} + || true
+          # 2. Operasi bedah teks: Ganti semua URL Savannah (yang sering mati) dengan Mirror Kanada
+          find "$P4A_DIR" -type f -name "*.py" -exec sed -i 's/download.savannah.gnu.org\/releases/mirror.csclub.uwaterloo.ca\/nongnu/g' {} +
+          find "$P4A_DIR" -type f -name "*.py" -exec sed -i 's/download.savannah.nongnu.org\/releases/mirror.csclub.uwaterloo.ca\/nongnu/g' {} +
           
-          # 3. Patch Infrastruktur 2: Cegah p4a melakukan upgrade pip yang merusak sistem
-          find python-for-android -type f -name "build.py" -exec sed -i 's/pip install -U pip/pip install "pip<24.1"/g' {} + || true
-          
-          # 4. Paksa buildozer.spec untuk menuruti kerangka perakit yang sudah kita bedah ini
-          echo "p4a.source_dir = ./python-for-android" >> buildozer.spec
+          echo "Operasi bedah berhasil! URL telah ditambal."
 
       - name: Build APK with Buildozer
-        run: |
-          yes | buildozer -v android debug
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 60
+          max_attempts: 3
+          retry_wait_seconds: 15
+          command: yes | buildozer -v android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
