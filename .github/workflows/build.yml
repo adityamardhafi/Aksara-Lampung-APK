@@ -23,16 +23,19 @@ jobs:
           pip install --upgrade pip
           pip install buildozer cython==0.29.33
       
-      - name: Pre-patch Server & Build APK
+      - name: Bait and Patch Server (Expert Fix)
         run: |
-          # 1. Kloning sistem perakit Android secara manual
-          mkdir -p .buildozer/android/platform
-          git clone -b master --single-branch https://github.com/kivy/python-for-android.git .buildozer/android/platform/python-for-android || true
+          # 1. PANCINGAN: Biarkan Buildozer mengunduh komponen stabil bawaannya. 
+          # Perintah ini sengaja dibiarkan gagal saat menabrak server Savannah yang mati.
+          echo "Memulai perakitan tahap 1 (Mengunduh kerangka stabil)..."
+          yes | buildozer -v android debug || true
           
-          # 2. Injeksi bypass server Savannah ke server Kanada (Mirror) agar terhindar dari 502/504
-          find .buildozer/android/platform/python-for-android -type f -name "__init__.py" -exec sed -i 's/download.savannah.gnu.org\/releases/mirror.csclub.uwaterloo.ca\/nongnu/g' {} + || true
+          # 2. TAMBALAN: Setelah kerangkanya terunduh, kita injeksi URL server Kanada (Mirror).
+          echo "Menerapkan patch server Freetype (Savannah -> Kanada)..."
+          find .buildozer/android/platform/python-for-android -type f -name "*.py" -exec sed -i 's/download.savannah.gnu.org\/releases/mirror.csclub.uwaterloo.ca\/nongnu/g' {} + || true
           
-          # 3. Eksekusi perakitan
+          # 3. LANJUTAN: Lanjutkan perakitan dengan kerangka yang sudah ditambal.
+          echo "Melanjutkan perakitan tahap akhir..."
           yes | buildozer -v android debug
 
       - name: Upload APK
