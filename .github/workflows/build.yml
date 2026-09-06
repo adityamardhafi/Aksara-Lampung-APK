@@ -23,13 +23,19 @@ jobs:
           pip install --upgrade pip
           pip install buildozer cython==0.29.33
       
-      - name: Build with Buildozer
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 60
-          max_attempts: 3
-          retry_wait_seconds: 30
-          command: yes | buildozer -v android debug
+      - name: Build APK with Auto-Bypass
+        run: |
+          # 1. Mulai perakitan secara normal
+          if ! yes | buildozer -v android debug; then
+            
+            # 2. Jika gagal (karena Savannah mati), kita bajak kodenya dan ganti dengan server Kanada
+            echo "Mendeteksi server Savannah mati. Melakukan injeksi server cermin (Mirror)..."
+            find .buildozer/android/platform/python-for-android -type f -name "__init__.py" -exec sed -i 's/download.savannah.gnu.org\/releases/mirror.csclub.uwaterloo.ca\/nongnu/g' {} + || true
+            
+            # 3. Lanjutkan kembali perakitan dengan server yang baru
+            echo "Mencoba melanjutkan perakitan..."
+            yes | buildozer -v android debug
+          fi
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
