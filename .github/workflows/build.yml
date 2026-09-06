@@ -20,22 +20,25 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential git python3 python3-dev zip unzip libtool libtool-bin autoconf automake m4 pkg-config libffi-dev libssl-dev openjdk-17-jdk
-          pip install --upgrade pip
+          pip install --upgrade "pip<24.1"
           pip install buildozer cython==0.29.33
       
-      - name: Bait and Patch Server (Expert Fix)
+      - name: Setup Custom Toolchain & Deep Patch
         run: |
-          # 1. PANCINGAN: Biarkan Buildozer mengunduh komponen stabil bawaannya. 
-          # Perintah ini sengaja dibiarkan gagal saat menabrak server Savannah yang mati.
-          echo "Memulai perakitan tahap 1 (Mengunduh kerangka stabil)..."
-          yes | buildozer -v android debug || true
+          # 1. Pengambilalihan mesin perakit (python-for-android) ke folder lokal
+          git clone https://github.com/kivy/python-for-android.git
           
-          # 2. TAMBALAN: Setelah kerangkanya terunduh, kita injeksi URL server Kanada (Mirror).
-          echo "Menerapkan patch server Freetype (Savannah -> Kanada)..."
-          find .buildozer/android/platform/python-for-android -type f -name "*.py" -exec sed -i 's/download.savannah.gnu.org\/releases/mirror.csclub.uwaterloo.ca\/nongnu/g' {} + || true
+          # 2. Patch Infrastruktur 1: Bypass Server Savannah yang mati ke Server Kanada
+          find python-for-android -type f -name "*.py" -exec sed -i 's/download.savannah.gnu.org\/releases/mirror.csclub.uwaterloo.ca\/nongnu/g' {} + || true
           
-          # 3. LANJUTAN: Lanjutkan perakitan dengan kerangka yang sudah ditambal.
-          echo "Melanjutkan perakitan tahap akhir..."
+          # 3. Patch Infrastruktur 2: Cegah p4a melakukan upgrade pip yang merusak sistem
+          find python-for-android -type f -name "build.py" -exec sed -i 's/pip install -U pip/pip install "pip<24.1"/g' {} + || true
+          
+          # 4. Paksa buildozer.spec untuk menuruti kerangka perakit yang sudah kita bedah ini
+          echo "p4a.source_dir = ./python-for-android" >> buildozer.spec
+
+      - name: Build APK with Buildozer
+        run: |
           yes | buildozer -v android debug
 
       - name: Upload APK
