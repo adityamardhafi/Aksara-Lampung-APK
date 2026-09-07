@@ -37,18 +37,24 @@ jobs:
           fi
           
           echo "Tahap 3: Eksekusi Final dengan Loop Penahan Time-out..."
-          # Mesin akan mencoba maksimal 5 kali jika ditendang oleh server luar
+          SUCCESS=0
           for i in {1..5}; do
             echo "Mencoba perakitan (Percobaan ke-$i)..."
             if yes | buildozer -v android debug; then
               echo "Perakitan APK Sukses!"
+              SUCCESS=1
               break
             else
-              echo "Terjadi interupsi jaringan. Menunggu 10 detik sebelum auto-resume..."
+              echo "Terjadi interupsi/error. Menunggu 10 detik..."
               sleep 10
             fi
           done
-
+          
+          if [ $SUCCESS -eq 0 ]; then
+            echo "Gagal merakit setelah 5 percobaan. Mematikan sistem."
+            exit 1
+          fi
+          
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
