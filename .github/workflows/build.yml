@@ -9,7 +9,58 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout code
+        uses: actions/checkout@v4name: Build Kivy APK
+
+on:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential git python3 python3-dev zip unzip libtool libtool-bin autoconf automake m4 pkg-config libffi-dev libssl-dev openjdk-17-jdk
+          pip install --upgrade "pip<24.1"
+          pip install buildozer cython==0.29.33
+      
+      - name: Auto-Patch and Build (Final Run)
+        run: |
+          # 1. Pancingan Pertama dengan memaksa Buildozer menggunakan cabang develop p4a
+          echo "Memancing kerangka perakit cabang develop (AAB Support)..."
+          export P4A_RELEASE_DIR=".buildozer/android/platform/python-for-android"
+          yes | buildozer -v android debug || true
+          
+          # 2. Operasi Bedah Cepat (Hanya Bypass Savannah)
+          echo "Menerapkan patch server Freetype (Savannah -> Kanada)..."
+          if [ -d "$P4A_RELEASE_DIR" ]; then
+            find "$P4A_RELEASE_DIR" -type f -name "*.py" -exec sed -i 's/download.savannah.gnu.org\/releases/mirror.csclub.uwaterloo.ca\/nongnu/g' {} + || true
+            find "$P4A_RELEASE_DIR" -type f -name "*.py" -exec sed -i 's/download.savannah.nongnu.org\/releases/mirror.csclub.uwaterloo.ca\/nongnu/g' {} + || true
+            
+            # Kita amankan juga versi pip di build.py
+            find "$P4A_RELEASE_DIR" -type f -name "build.py" -exec sed -i 's/pip install -U pip/pip install "pip<24.1"/g' {} + || true
+            echo "Patch diterapkan."
+          fi
+          
+          # 3. Eksekusi Final
+          echo "Mengeksekusi perakitan APK terakhir..."
+          yes | buildozer -v android debug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: aplikasi-skripsi
+          path: bin/*.apk
 
       - name: Set up Python
         uses: actions/setup-python@v5
