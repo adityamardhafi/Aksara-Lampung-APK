@@ -23,27 +23,31 @@ jobs:
           pip install --upgrade "pip<24.1"
           pip install buildozer cython==0.29.33
       
-      - name: Auto-Patch and Build (Final Run)
+      - name: The Indestructible Build (Auto-Resume)
         run: |
-          # 1. Pancingan Pertama dengan memaksa Buildozer menggunakan cabang develop p4a
-          echo "Memancing kerangka perakit cabang develop (AAB Support)..."
-          export P4A_RELEASE_DIR=".buildozer/android/platform/python-for-android"
+          echo "Tahap 1: Memancing pengunduhan kerangka awal..."
           yes | buildozer -v android debug || true
           
-          # 2. Operasi Bedah Cepat (Hanya Bypass Savannah)
-          echo "Menerapkan patch server Freetype (Savannah -> Kanada)..."
-          if [ -d "$P4A_RELEASE_DIR" ]; then
-            find "$P4A_RELEASE_DIR" -type f -name "*.py" -exec sed -i 's/download.savannah.gnu.org\/releases/mirror.csclub.uwaterloo.ca\/nongnu/g' {} + || true
-            find "$P4A_RELEASE_DIR" -type f -name "*.py" -exec sed -i 's/download.savannah.nongnu.org\/releases/mirror.csclub.uwaterloo.ca\/nongnu/g' {} + || true
-            
-            # Kita amankan juga versi pip di build.py
-            find "$P4A_RELEASE_DIR" -type f -name "build.py" -exec sed -i 's/pip install -U pip/pip install "pip<24.1"/g' {} + || true
-            echo "Patch diterapkan."
+          echo "Tahap 2: Operasi Bedah Infrastruktur..."
+          export P4A_DIR=".buildozer/android/platform/python-for-android"
+          if [ -d "$P4A_DIR" ]; then
+            find "$P4A_DIR" -type f -name "*.py" -exec sed -i 's/download.savannah.gnu.org\/releases/mirror.csclub.uwaterloo.ca\/nongnu/g' {} + || true
+            find "$P4A_DIR" -type f -name "*.py" -exec sed -i 's/download.savannah.nongnu.org\/releases/mirror.csclub.uwaterloo.ca\/nongnu/g' {} + || true
+            find "$P4A_DIR" -type f -name "build.py" -exec sed -i 's/pip install -U pip/pip install "pip<24.1"/g' {} + || true
           fi
           
-          # 3. Eksekusi Final
-          echo "Mengeksekusi perakitan APK terakhir..."
-          yes | buildozer -v android debug
+          echo "Tahap 3: Eksekusi Final dengan Loop Penahan Time-out..."
+          # Mesin akan mencoba maksimal 5 kali jika ditendang oleh server luar
+          for i in {1..5}; do
+            echo "Mencoba perakitan (Percobaan ke-$i)..."
+            if yes | buildozer -v android debug; then
+              echo "Perakitan APK Sukses!"
+              break
+            else
+              echo "Terjadi interupsi jaringan. Menunggu 10 detik sebelum auto-resume..."
+              sleep 10
+            fi
+          done
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
