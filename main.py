@@ -31,7 +31,7 @@ def get_resource_path(filename):
 
 
 # --- SETTING TAMPILAN WINDOWS (Untuk simulasi layar HP) ---
-Window.size = (380, 720)
+# Window.size = (380, 720)
 
 # --- LOAD MODEL TFLITE ---
 MODEL_PATH = get_resource_path('model_aksara.tflite')
